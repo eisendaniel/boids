@@ -3,9 +3,9 @@ use std::iter;
 
 const WIDTH: f64 = 640.0;
 const HEIGHT: f64 = 640.0;
+const NUMBOIDS: usize = 64;
 
 struct Boid {
-    radius: f64,
     x: f64,
     y: f64,
     dx: f64,
@@ -16,11 +16,10 @@ struct Boid {
 impl Boid {
     pub fn new() -> Boid {
         let b: Boid = Boid {
-            radius: (rand::random::<f64>() * WIDTH / 100.0 + 2.0),
             x: (rand::random::<f64>() * WIDTH / 2.0 + WIDTH / 4.0),
             y: (rand::random::<f64>() * HEIGHT / 2.0 + HEIGHT / 4.0),
-            dx: (rand::random::<f64>() - 0.5) * 640.0,
-            dy: (rand::random::<f64>() - 0.5) * 640.0,
+            dx: (rand::random::<f64>() - 0.5) * 320.0,
+            dy: (rand::random::<f64>() - 0.5) * 320.0,
             color: [
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
@@ -30,10 +29,26 @@ impl Boid {
         };
         b
     }
+    fn keep_within_bounds(&mut self) {
+        let margin: f64 = 620.0;
+        let turn_factor: f64 = 8.0;
+        if self.x < margin {
+            self.dx += turn_factor;
+        }
+        if self.x > WIDTH - margin {
+            self.dx -= turn_factor
+        }
+        if self.y < margin {
+            self.dy += turn_factor;
+        }
+        if self.y > HEIGHT - margin {
+            self.dy -= turn_factor;
+        }
+    }
 }
 
 fn get_boids() -> Vec<Boid> {
-    iter::repeat_with(|| Boid::new()).take(256).collect()
+    iter::repeat_with(|| Boid::new()).take(NUMBOIDS).collect()
 }
 
 fn main() {
@@ -52,28 +67,18 @@ fn main() {
                 for b in &boids {
                     rectangle(
                         b.color,
-                        [
-                            b.x - b.radius,
-                            b.y - b.radius,
-                            b.radius * 2.0,
-                            b.radius * 2.0,
-                        ],
+                        [b.x - 4.0, b.y - 4.0, 8.0, 8.0],
                         context.transform,
                         graphics,
-                    )
+                    );
                 }
             });
         }
         if let Some(u) = event.update_args() {
             for b in &mut boids {
+                b.keep_within_bounds();
                 b.x += b.dx * u.dt;
                 b.y += b.dy * u.dt;
-                if b.y <= (0.0 + b.radius) || b.y >= (HEIGHT - b.radius) {
-                    b.dy *= -1.0;
-                }
-                if b.x <= (0.0 + b.radius) || b.x >= (WIDTH - b.radius) {
-                    b.dx *= -1.0;
-                }
             }
         }
     }
