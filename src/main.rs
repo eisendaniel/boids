@@ -3,8 +3,12 @@ use std::iter;
 
 const WIDTH: f64 = 640.0;
 const HEIGHT: f64 = 640.0;
-const NUMBOIDS: usize = 64;
 
+const SPEED_LIMIT: f64 = 300.0;
+const VISUAL_RANGE: f64 = 32.0;
+const NUMBOIDS: usize = 256;
+
+#[derive(Clone, Copy)]
 struct Boid {
     x: f64,
     y: f64,
@@ -29,8 +33,79 @@ impl Boid {
         };
         b
     }
+
+    fn distance(&self, boid: &Boid) -> f64 {
+        ((self.x - boid.x).powi(2) + (self.y - boid.y).powi(2)).sqrt()
+    }
+
+    fn avoid_others(&mut self, boids: &Vec<Boid>) {
+        let min_distance = 16.0;
+        let avoid_factor = 0.5;
+        let mut move_x = 0.0;
+        let mut move_y = 0.0;
+        for other in boids {
+            let dist = self.distance(other);
+            if dist < min_distance && dist > 0.0 {
+                move_x += self.x - other.x;
+                move_y += self.y - other.y;
+            }
+        }
+        self.dx += move_x * avoid_factor;
+        self.dy += move_y * avoid_factor;
+    }
+
+    fn fly_towards_center(&mut self, boids: &Vec<Boid>) {
+        let centering_factor = 0.05; // adjust velocity by this %
+        let mut center_x = 0.0;
+        let mut center_y = 0.0;
+        let mut num_neighbors = 0.0;
+        for other in boids {
+            if self.distance(other) < VISUAL_RANGE {
+                center_x += other.x;
+                center_y += other.y;
+                num_neighbors += 1.0;
+            }
+        }
+        if num_neighbors > 0.0 {
+            center_x = center_x / num_neighbors;
+            center_y = center_y / num_neighbors;
+
+            self.dx += (center_x - self.x) * centering_factor;
+            self.dy += (center_y - self.y) * centering_factor;
+        }
+    }
+
+    fn match_velocity(&mut self, boids: &Vec<Boid>) {
+        let matching_factor = 0.05;
+        let mut avg_dx = 0.0;
+        let mut avg_dy = 0.0;
+        let mut num_neighbors = 0.0;
+        for other in boids {
+            if self.distance(other) < VISUAL_RANGE {
+                avg_dx += other.dx;
+                avg_dy += other.dy;
+                num_neighbors += 1.0;
+            }
+        }
+        if num_neighbors > 0.0 {
+            avg_dx = avg_dx / num_neighbors;
+            avg_dy = avg_dy / num_neighbors;
+
+            self.dx += (avg_dx - self.dx) * matching_factor;
+            self.dy += (avg_dy - self.dy) * matching_factor;
+        }
+    }
+
+    fn limit_speed(&mut self) {
+        let speed = (self.dx * self.dx + self.dy * self.dy).sqrt();
+        if speed > SPEED_LIMIT {
+            self.dx = (self.dx / speed) * SPEED_LIMIT;
+            self.dy = (self.dy / speed) * SPEED_LIMIT;
+        }
+    }
+
     fn keep_within_bounds(&mut self) {
-        let margin: f64 = 620.0;
+        let margin: f64 = 600.0;
         let turn_factor: f64 = 8.0;
         if self.x < margin {
             self.dx += turn_factor;
@@ -62,23 +137,37 @@ fn main() {
 
     while let Some(event) = window.next() {
         if let Some(_) = event.render_args() {
+            let triangle = [
+                [0.0, 0.0 - 8.0],
+                [0.0 - 4.0, 0.0 + 4.0],
+                [0.0 + 2.0, 0.0 + 4.0],
+            ];
+            let square = rectangle::square(0.0, 0.0, 8.0);
             window.draw_2d(&event, |context, graphics, _device| {
                 clear(bg_color, graphics); //clear white
                 for b in &boids {
-                    rectangle(
-                        b.color,
-                        [b.x - 4.0, b.y - 4.0, 8.0, 8.0],
-                        context.transform,
-                        graphics,
-                    );
+                    let angle = b.dy.atan2(b.dx) + 3.14159 / 2.0;
+                    let transform = context
+                        .transform
+                        .trans(b.x, b.y)
+                        .rot_rad(angle)
+                        .trans(-8.0, -8.0);
+                    rectangle(b.color, square, transform, graphics);
+                    // polygon(b.color, &triangle, transform, graphics);
                 }
             });
         }
         if let Some(u) = event.update_args() {
-            for b in &mut boids {
+            for i in 0..boids.len() {
+                let mut b = boids[i];
+                b.fly_towards_center(&boids);
+                b.avoid_others(&boids);
+                b.match_velocity(&boids);
+                b.limit_speed();
                 b.keep_within_bounds();
                 b.x += b.dx * u.dt;
                 b.y += b.dy * u.dt;
+                boids[i] = b;
             }
         }
     }
