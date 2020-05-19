@@ -6,7 +6,7 @@ const HEIGHT: f64 = 640.0;
 
 const SPEED_LIMIT: f64 = 300.0;
 const VISUAL_RANGE: f64 = 32.0;
-const NUMBOIDS: usize = 256;
+const NUM_BOIDS: usize = 256;
 
 #[derive(Clone, Copy)]
 struct Boid {
@@ -19,7 +19,7 @@ struct Boid {
 
 impl Boid {
     pub fn new() -> Boid {
-        let b: Boid = Boid {
+        Boid {
             x: (rand::random::<f64>() * WIDTH / 2.0 + WIDTH / 4.0),
             y: (rand::random::<f64>() * HEIGHT / 2.0 + HEIGHT / 4.0),
             dx: (rand::random::<f64>() - 0.5) * 320.0,
@@ -30,8 +30,7 @@ impl Boid {
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
                 1.0,
             ],
-        };
-        b
+        }
     }
 
     fn distance(&self, boid: &Boid) -> f64 {
@@ -123,7 +122,7 @@ impl Boid {
 }
 
 fn get_boids() -> Vec<Boid> {
-    iter::repeat_with(|| Boid::new()).take(NUMBOIDS).collect()
+    iter::repeat_with(|| Boid::new()).take(NUM_BOIDS).collect()
 }
 
 fn main() {
@@ -138,22 +137,19 @@ fn main() {
     while let Some(event) = window.next() {
         if let Some(_) = event.render_args() {
             let triangle = [
-                [0.0, 0.0 - 8.0],
-                [0.0 - 4.0, 0.0 + 4.0],
+                [0.0, 0.0 - 4.0],
+                [0.0 - 2.0, 0.0 + 4.0],
                 [0.0 + 2.0, 0.0 + 4.0],
             ];
-            let square = rectangle::square(0.0, 0.0, 8.0);
             window.draw_2d(&event, |context, graphics, _device| {
                 clear(bg_color, graphics); //clear white
                 for b in &boids {
                     let angle = b.dy.atan2(b.dx) + 3.14159 / 2.0;
-                    let transform = context
-                        .transform
-                        .trans(b.x, b.y)
-                        .rot_rad(angle)
-                        .trans(-8.0, -8.0);
-                    rectangle(b.color, square, transform, graphics);
-                    // polygon(b.color, &triangle, transform, graphics);
+                    let transform = context.transform.trans(b.x, b.y).rot_rad(angle);
+                    // rectangle(b.color, square, transform, graphics);
+                    polygon(b.color, &triangle, transform, graphics);
+                    let com = rectangle::centered_square(b.x, b.y, 1.0);
+                    rectangle([1.0, 0.0, 0.0, 1.0], com, context.transform, graphics);
                 }
             });
         }
