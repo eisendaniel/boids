@@ -103,7 +103,7 @@ impl Boid {
         }
     }
 
-    fn keep_within_bounds(&mut self) {
+    fn keep_within_bounds(&mut self, cursor: &[f64; 2]) {
         let margin: f64 = 600.0;
         let turn_factor: f64 = 8.0;
         if self.x < margin {
@@ -118,6 +118,10 @@ impl Boid {
         if self.y > HEIGHT - margin {
             self.dy -= turn_factor;
         }
+        if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
+            self.dx += (self.x - cursor[0]) * 0.7;
+            self.dy += (self.y - cursor[1]) * 0.7;
+        }
     }
 }
 
@@ -128,6 +132,7 @@ fn get_boids() -> Vec<Boid> {
 fn main() {
     let bg_color = [38.0 / 255.0, 50.0 / 255.0, 56.0 / 255.0, 1.0];
     let mut boids: Vec<Boid> = get_boids();
+    let mut cursor = [0.0, 0.0];
 
     let mut window: PistonWindow = WindowSettings::new("Graphics!", [WIDTH, HEIGHT])
         .exit_on_esc(true)
@@ -135,21 +140,25 @@ fn main() {
         .unwrap();
 
     while let Some(event) = window.next() {
+        event.mouse_cursor(|pos| {
+            cursor = pos;
+        });
+
         if let Some(_) = event.render_args() {
-            let triangle = [
-                [0.0, 0.0 - 4.0],
-                [0.0 - 2.0, 0.0 + 4.0],
-                [0.0 + 2.0, 0.0 + 4.0],
-            ];
+            let triangle = [[0.0, -8.0], [-4.0, 4.0], [4.0, 4.0]];
             window.draw_2d(&event, |context, graphics, _device| {
                 clear(bg_color, graphics); //clear white
                 for b in &boids {
                     let angle = b.dy.atan2(b.dx) + 3.14159 / 2.0;
                     let transform = context.transform.trans(b.x, b.y).rot_rad(angle);
-                    // rectangle(b.color, square, transform, graphics);
                     polygon(b.color, &triangle, transform, graphics);
-                    let com = rectangle::centered_square(b.x, b.y, 1.0);
-                    rectangle([1.0, 0.0, 0.0, 1.0], com, context.transform, graphics);
+                    //uncomment to show COM
+                    // rectangle(
+                    //     [1.0, 0.0, 0.0, 1.0],
+                    //     rectangle::centered_square(b.x, b.y, 1.0),
+                    //     context.transform,
+                    //     graphics,
+                    // );
                 }
             });
         }
@@ -160,7 +169,7 @@ fn main() {
                 b.avoid_others(&boids);
                 b.match_velocity(&boids);
                 b.limit_speed();
-                b.keep_within_bounds();
+                b.keep_within_bounds(&cursor);
                 b.x += b.dx * u.dt;
                 b.y += b.dy * u.dt;
                 boids[i] = b;
