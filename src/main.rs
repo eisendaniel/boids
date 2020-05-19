@@ -33,10 +33,6 @@ impl Boid {
         }
     }
 
-    fn distance(&self, boid: &Boid) -> f64 {
-        ((self.x - boid.x).powi(2) + (self.y - boid.y).powi(2)).sqrt()
-    }
-
     fn avoid_others(&mut self, boids: &Vec<Boid>) {
         let min_distance = 16.0;
         let avoid_factor = 0.5;
@@ -94,6 +90,54 @@ impl Boid {
             self.dy += (avg_dy - self.dy) * matching_factor;
         }
     }
+    fn flock(&mut self, boids: &Vec<Boid>) {
+        let centering_factor = 0.05; // adjust velocity by this %
+        let mut center_x = 0.0;
+        let mut center_y = 0.0;
+        let mut num_neighbors_c = 0.0;
+        let min_distance = 16.0;
+        let avoid_factor = 0.5;
+        let mut move_x = 0.0;
+        let mut move_y = 0.0;
+        let matching_factor = 0.05;
+        let mut avg_dx = 0.0;
+        let mut avg_dy = 0.0;
+        let mut num_neighbors_v = 0.0;
+        for other in boids {
+            let dist = self.distance(other);
+
+            if dist < VISUAL_RANGE {
+                center_x += other.x;
+                center_y += other.y;
+                num_neighbors_c += 1.0;
+            }
+            if dist < min_distance && dist > 0.0 {
+                move_x += self.x - other.x;
+                move_y += self.y - other.y;
+            }
+            if dist < VISUAL_RANGE {
+                avg_dx += other.dx;
+                avg_dy += other.dy;
+                num_neighbors_v += 1.0;
+            }
+        }
+        if num_neighbors_c > 0.0 {
+            center_x = center_x / num_neighbors_c;
+            center_y = center_y / num_neighbors_c;
+
+            self.dx += (center_x - self.x) * centering_factor;
+            self.dy += (center_y - self.y) * centering_factor;
+        }
+        self.dx += move_x * avoid_factor;
+        self.dy += move_y * avoid_factor;
+        if num_neighbors_v > 0.0 {
+            avg_dx = avg_dx / num_neighbors_v;
+            avg_dy = avg_dy / num_neighbors_v;
+
+            self.dx += (avg_dx - self.dx) * matching_factor;
+            self.dy += (avg_dy - self.dy) * matching_factor;
+        }
+    }
 
     fn limit_speed(&mut self) {
         let speed = (self.dx * self.dx + self.dy * self.dy).sqrt();
@@ -122,6 +166,9 @@ impl Boid {
             self.dx += (self.x - cursor[0]) * 0.7;
             self.dy += (self.y - cursor[1]) * 0.7;
         }
+    }
+    fn distance(&self, boid: &Boid) -> f64 {
+        ((self.x - boid.x).powi(2) + (self.y - boid.y).powi(2)).sqrt()
     }
 }
 
@@ -165,9 +212,10 @@ fn main() {
         if let Some(u) = event.update_args() {
             for i in 0..boids.len() {
                 let mut b = boids[i];
-                b.fly_towards_center(&boids);
-                b.avoid_others(&boids);
-                b.match_velocity(&boids);
+                // b.fly_towards_center(&boids);
+                // b.avoid_others(&boids);
+                // b.match_velocity(&boids);
+                b.flock(&boids);
                 b.limit_speed();
                 b.keep_within_bounds(&cursor);
                 b.x += b.dx * u.dt;
