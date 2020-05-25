@@ -1,5 +1,5 @@
 use piston_window::*;
-use std::iter;
+use std::{f64::consts::PI, iter};
 
 //window stuff
 const WIDTH: f64 = 800.0;
@@ -7,11 +7,11 @@ const HEIGHT: f64 = WIDTH;
 
 //algorithm stuff
 const SPEED_LIMIT: f64 = 300.0;
-const VISUAL_RANGE: f64 = 36.0;
+const VISUAL_RANGE: f64 = 32.0;
 const MIN_DISTANCE: f64 = 12.0;
 
 //drawing stuff
-const NUM_BOIDS: usize = 100;
+const NUM_BOIDS: usize = 256;
 const BOID_SIZE: f64 = 12.0;
 
 #[derive(Clone, Copy)]
@@ -38,48 +38,57 @@ impl Boid {
             ],
         }
     }
-    fn flock(&mut self, boids: &Vec<Boid>) {
-        let centering_factor = 0.04;
-        let mut center_x = 0.0;
-        let mut center_y = 0.0;
-        let mut num_neighbors_c = 0.0;
+    fn avoid_others(&mut self, boids: &Vec<Boid>) {
         let avoid_factor = 0.5;
         let mut move_x = 0.0;
         let mut move_y = 0.0;
-        let matching_factor = 0.05;
-        let mut avg_dx = 0.0;
-        let mut avg_dy = 0.0;
-        let mut num_neighbors_v = 0.0;
         for other in boids {
             let dist = self.distance(other);
-
-            if dist < VISUAL_RANGE {
-                center_x += other.x;
-                center_y += other.y;
-                num_neighbors_c += 1.0;
-            }
             if dist < MIN_DISTANCE && dist > 0.0 {
                 move_x += self.x - other.x;
                 move_y += self.y - other.y;
             }
-            if dist < VISUAL_RANGE {
-                avg_dx += other.dx;
-                avg_dy += other.dy;
-                num_neighbors_v += 1.0;
+        }
+        self.dx += move_x * avoid_factor;
+        self.dy += move_y * avoid_factor;
+    }
+
+    fn fly_towards_center(&mut self, boids: &Vec<Boid>) {
+        let centering_factor = 0.05; // adjust velocity by this %
+        let mut center_x = 0.0;
+        let mut center_y = 0.0;
+        let mut num_neighbors = 0.0;
+        for other in boids {
+            if self.distance(other) < VISUAL_RANGE {
+                center_x += other.x;
+                center_y += other.y;
+                num_neighbors += 1.0;
             }
         }
-        if num_neighbors_c > 0.0 {
-            center_x = center_x / num_neighbors_c;
-            center_y = center_y / num_neighbors_c;
+        if num_neighbors > 0.0 {
+            center_x = center_x / num_neighbors;
+            center_y = center_y / num_neighbors;
 
             self.dx += (center_x - self.x) * centering_factor;
             self.dy += (center_y - self.y) * centering_factor;
         }
-        self.dx += move_x * avoid_factor;
-        self.dy += move_y * avoid_factor;
-        if num_neighbors_v > 0.0 {
-            avg_dx = avg_dx / num_neighbors_v;
-            avg_dy = avg_dy / num_neighbors_v;
+    }
+
+    fn match_velocity(&mut self, boids: &Vec<Boid>) {
+        let matching_factor = 0.05;
+        let mut avg_dx = 0.0;
+        let mut avg_dy = 0.0;
+        let mut num_neighbors = 0.0;
+        for other in boids {
+            if self.distance(other) < VISUAL_RANGE {
+                avg_dx += other.dx;
+                avg_dy += other.dy;
+                num_neighbors += 1.0;
+            }
+        }
+        if num_neighbors > 0.0 {
+            avg_dx = avg_dx / num_neighbors;
+            avg_dy = avg_dy / num_neighbors;
 
             self.dx += (avg_dx - self.dx) * matching_factor;
             self.dy += (avg_dy - self.dy) * matching_factor;
@@ -102,26 +111,6 @@ impl Boid {
         }
         if self.x > WIDTH - margin {
             self.dx -= turn_factor
-        }
-        if self.y < margin {
-            self.dy += turn_factor;
-        }
-        if self.y > HEIGHT - margin {
-            self.dy -= turn_factor;
-        }
-        if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
-            self.dx += (self.x - cursor[0]) * 0.7;
-            self.dy += (self.y - cursor[1]) * 0.7;
-        }
-    }
-    fn loop_bounds(&mut self, cursor: &[f64; 2]) {
-        let margin: f64 = WIDTH - 40.0;
-        let turn_factor: f64 = 8.0;
-        if self.x < 0.0 {
-            self.x = WIDTH;
-        }
-        if self.x > WIDTH {
-            self.x = 0.0;
         }
         if self.y < margin {
             self.dy += turn_factor;
@@ -168,7 +157,7 @@ fn main() {
             window.draw_2d(&event, |context, graphics, _device| {
                 clear(bg_color, graphics); //clear white
                 for b in &boids {
-                    let angle = b.dy.atan2(b.dx) + 3.14159265358979323846264338327950288 / 2.0;
+                    let angle = b.dy.atan2(b.dx) + PI / 2.0;
                     let transform = context.transform.trans(b.x, b.y).rot_rad(angle);
                     polygon(b.color, &shape, transform, graphics);
                 }
@@ -183,10 +172,11 @@ fn main() {
         if let Some(u) = event.update_args() {
             for i in 0..boids.len() {
                 let mut b = boids[i];
-                b.flock(&boids);
+                b.fly_towards_center(&boids);
+                b.avoid_others(&boids);
+                b.match_velocity(&boids);
                 b.limit_speed();
                 b.keep_within_bounds(&cursor);
-                // b.loop_bounds(&cursor);
                 b.x += b.dx * u.dt;
                 b.y += b.dy * u.dt;
                 boids[i] = b;
