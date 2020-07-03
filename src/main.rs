@@ -28,8 +28,8 @@ impl Boid {
         Boid {
             x: (rand::random::<f64>() * WIDTH / 2.0 + WIDTH / 4.0),
             y: (rand::random::<f64>() * HEIGHT / 2.0 + HEIGHT / 4.0),
-            dx: 0.0,
-            dy: 0.0,
+            dx: (rand::random::<f64>() - 0.5) * SPEED_LIMIT,
+            dy: (rand::random::<f64>() - 0.5) * SPEED_LIMIT,
             color: [
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
