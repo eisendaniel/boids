@@ -1,35 +1,35 @@
-use piston_window::*;
-use std::{f64::consts::PI, iter};
+use ggez::*;
+use std::{f32::consts::PI, iter};
 
 //window stuff
-const WIDTH: f64 = 800.0;
-const HEIGHT: f64 = WIDTH;
+const WIDTH: f32 = 800.0;
+const HEIGHT: f32 = WIDTH;
 
 //algorithm stuff
-const SPEED_LIMIT: f64 = 300.0;
-const VISUAL_RANGE: f64 = 32.0;
-const MIN_DISTANCE: f64 = 12.0;
+const SPEED_LIMIT: f32 = 300.0; // Pixels per second
+const VISUAL_RANGE: f32 = 32.0; // Pixels
+const MIN_DISTANCE: f32 = 12.0; // Pixels
 
 //drawing stuff
-const NUM_BOIDS: usize = 256;
-const BOID_SIZE: f64 = 12.0;
+const NUM_BOIDS: usize = 1; // n
+const BOID_SIZE: f32 = 12.0; // Pixels
 
 #[derive(Clone, Copy)]
 struct Boid {
-    x: f64,
-    y: f64,
-    dx: f64,
-    dy: f64,
+    x: f32,
+    y: f32,
+    dx: f32,
+    dy: f32,
     color: [f32; 4],
 }
 
 impl Boid {
     pub fn new() -> Boid {
         Boid {
-            x: (rand::random::<f64>() * WIDTH / 2.0 + WIDTH / 4.0),
-            y: (rand::random::<f64>() * HEIGHT / 2.0 + HEIGHT / 4.0),
-            dx: (rand::random::<f64>() - 0.5) * SPEED_LIMIT,
-            dy: (rand::random::<f64>() - 0.5) * SPEED_LIMIT,
+            x: (rand::random::<f32>() * WIDTH / 2.0 + WIDTH / 4.0),
+            y: (rand::random::<f32>() * HEIGHT / 2.0 + HEIGHT / 4.0),
+            dx: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
+            dy: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
             color: [
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
@@ -103,9 +103,9 @@ impl Boid {
         }
     }
 
-    fn keep_within_bounds(&mut self, cursor: &[f64; 2]) {
-        let margin: f64 = WIDTH - 40.0;
-        let turn_factor: f64 = 8.0;
+    fn keep_within_bounds(&mut self /*, cursor: &[f32; 2]*/) {
+        let margin: f32 = WIDTH - 40.0;
+        let turn_factor: f32 = 8.0;
         if self.x < margin {
             self.dx += turn_factor;
         }
@@ -118,12 +118,13 @@ impl Boid {
         if self.y > HEIGHT - margin {
             self.dy -= turn_factor;
         }
-        if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
-            self.dx += (self.x - cursor[0]) * 0.7;
-            self.dy += (self.y - cursor[1]) * 0.7;
-        }
+        /*Dorment Cursor Code from piston*/
+        // if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
+        //     self.dx += (self.x - cursor[0]) * 0.7;
+        //     self.dy += (self.y - cursor[1]) * 0.7;
+        // }
     }
-    fn distance(&self, boid: &Boid) -> f64 {
+    fn distance(&self, boid: &Boid) -> f32 {
         ((self.x - boid.x).powi(2) + (self.y - boid.y).powi(2)).sqrt()
     }
 }
@@ -132,55 +133,74 @@ fn get_boids() -> Vec<Boid> {
     iter::repeat_with(|| Boid::new()).take(NUM_BOIDS).collect()
 }
 
+struct State {
+    dt: std::time::Duration,
+    boids: Vec<Boid>,
+}
+
+impl State {
+    pub fn new(_ctx: &mut Context) -> State {
+        State {
+            dt: std::time::Duration::new(0, 0),
+            boids: get_boids(),
+        }
+    }
+}
+
+impl ggez::event::EventHandler for State {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        self.dt = timer::delta(ctx);
+        let tick = (self.dt.subsec_millis() as f32) / 1000.0;
+
+        for i in 0..(self.boids).len() {
+            let mut b = self.boids[i];
+            b.fly_towards_center(&self.boids);
+            b.avoid_others(&self.boids);
+            b.match_velocity(&self.boids);
+            b.limit_speed();
+            b.keep_within_bounds();
+
+            b.x += b.dx * tick;
+            b.y += b.dy * tick;
+
+            self.boids[i] = b;
+        }
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        graphics::clear(ctx, [0.15, 0.2, 0.22, 1.0].into());
+        for boid in &self.boids {
+            let rect = graphics::Rect::new(
+                boid.x - BOID_SIZE / 2.0,
+                boid.y - BOID_SIZE / 2.0,
+                BOID_SIZE,
+                BOID_SIZE,
+            );
+            let r1 = graphics::Mesh::new_rectangle(
+                ctx,
+                graphics::DrawMode::fill(),
+                rect,
+                boid.color.into(),
+            )?;
+            graphics::draw(ctx, &r1, graphics::DrawParam::default())?;
+        }
+        /*Highlight cursor..*/
+
+        graphics::present(ctx)
+    }
+}
+
 fn main() {
-    let bg_color = [38.0 / 255.0, 50.0 / 255.0, 56.0 / 255.0, 1.0];
-    let mut boids: Vec<Boid> = get_boids();
-    let mut cursor = [0.0, 0.0];
-
-    let mut window: PistonWindow = WindowSettings::new("Graphics!", [WIDTH, HEIGHT])
-        .exit_on_esc(true)
+    let (mut ctx, mut events_loop) = ContextBuilder::new("GOL", "eisendaniel")
+        .window_mode(conf::WindowMode::default().dimensions(WIDTH, HEIGHT))
         .build()
-        .unwrap();
+        .expect("Failed to create context");
 
-    while let Some(event) = window.next() {
-        event.mouse_cursor(|pos| {
-            cursor = pos;
-        });
+    let mut state = State::new(&mut ctx);
 
-        if let Some(_) = event.render_args() {
-            let shape = [
-                [0.0, -(BOID_SIZE / 2.0)],
-                [BOID_SIZE / 3.0, BOID_SIZE / 2.0],
-                [0.0, BOID_SIZE / 4.0],
-                [-(BOID_SIZE / 3.0), BOID_SIZE / 2.0],
-            ];
-            window.draw_2d(&event, |context, graphics, _device| {
-                clear(bg_color, graphics); //clear white
-                for b in &boids {
-                    let angle = b.dy.atan2(b.dx) + PI / 2.0;
-                    let transform = context.transform.trans(b.x, b.y).rot_rad(angle);
-                    polygon(b.color, &shape, transform, graphics);
-                }
-                ellipse(
-                    [1.0, 1.0, 1.0, 0.5],
-                    rectangle::centered_square(cursor[0], cursor[1], 10.0),
-                    context.transform,
-                    graphics,
-                );
-            });
-        }
-        if let Some(u) = event.update_args() {
-            for i in 0..boids.len() {
-                let mut b = boids[i];
-                b.fly_towards_center(&boids);
-                b.avoid_others(&boids);
-                b.match_velocity(&boids);
-                b.limit_speed();
-                b.keep_within_bounds(&cursor);
-                b.x += b.dx * u.dt;
-                b.y += b.dy * u.dt;
-                boids[i] = b;
-            }
-        }
+    match event::run(&mut ctx, &mut events_loop, &mut state) {
+        Ok(_) => println!("Exited Cleanly "),
+        Err(e) => println!("Error: {}", e),
     }
 }

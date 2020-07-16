@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 piston_window = "0.108.0"
+ggez = "0.5.1"
 rand = "0.7.3" 
