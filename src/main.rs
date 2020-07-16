@@ -7,12 +7,12 @@ const HEIGHT: f32 = WIDTH;
 
 //algorithm stuff
 const SPEED_LIMIT: f32 = 300.0; // Pixels per second
-const VISUAL_RANGE: f32 = 32.0; // Pixels
-const MIN_DISTANCE: f32 = 12.0; // Pixels
+const VISUAL_RANGE: f32 = 64.0; // Pixels
+const MIN_DISTANCE: f32 = 8.0; // Pixels
 
 //drawing stuff
-const NUM_BOIDS: usize = 1; // n
-const BOID_SIZE: f32 = 12.0; // Pixels
+const NUM_BOIDS: usize = 512; // n
+const BOID_SIZE: f32 = 8.0; // Pixels
 
 #[derive(Clone, Copy)]
 struct Boid {
@@ -170,23 +170,21 @@ impl ggez::event::EventHandler for State {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.15, 0.2, 0.22, 1.0].into());
+
+        let mb = &mut graphics::MeshBuilder::new();
         for boid in &self.boids {
-            let rect = graphics::Rect::new(
-                boid.x - BOID_SIZE / 2.0,
-                boid.y - BOID_SIZE / 2.0,
-                BOID_SIZE,
-                BOID_SIZE,
-            );
-            let r1 = graphics::Mesh::new_rectangle(
-                ctx,
+            let _angle = boid.dy.atan2(boid.dx) + PI / 2.0;
+            mb.circle(
                 graphics::DrawMode::fill(),
-                rect,
+                nalgebra::Point2::new(boid.x, boid.y),
+                BOID_SIZE / 2.0,
+                1.0,
                 boid.color.into(),
-            )?;
-            graphics::draw(ctx, &r1, graphics::DrawParam::default())?;
+            );
         }
         /*Highlight cursor..*/
-
+        let m = mb.build(ctx)?;
+        graphics::draw(ctx, &m, graphics::DrawParam::new())?;
         graphics::present(ctx)
     }
 }
