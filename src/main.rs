@@ -1,20 +1,20 @@
-use ggez::*;
-use std::{f32::consts::PI, iter};
+use ggez::{nalgebra as na, *};
+use std::iter;
 
 //window stuff
-const WIDTH: f32 = 800.0;
-const HEIGHT: f32 = WIDTH;
+const HEIGHT: f32 = 800.0;
+const WIDTH: f32 = HEIGHT * (16.0 / 9.0);
 
 //algorithm stuff
-const SPEED_LIMIT: f32 = 300.0; // Pixels per second
+const SPEED_LIMIT: f32 = 400.0; // Pixels per second
 const VISUAL_RANGE: f32 = 64.0; // Pixels
-const MIN_DISTANCE: f32 = 8.0; // Pixels
+const MIN_DISTANCE: f32 = 12.0; // Pixels
 
 //drawing stuff
 const NUM_BOIDS: usize = 512; // n
-const BOID_SIZE: f32 = 8.0; // Pixels
+const BOID_SIZE: f32 = 12.0; // Pixels
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct Boid {
     x: f32,
     y: f32,
@@ -31,10 +31,10 @@ impl Boid {
             dx: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
             dy: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
             color: [
+                (rand::random::<f32>() * 128.0 + 128.0) / 255.0, // Red
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
-                (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
-                1.0,
+                0.75,
             ],
         }
     }
@@ -103,26 +103,26 @@ impl Boid {
         }
     }
 
-    fn keep_within_bounds(&mut self /*, cursor: &[f32; 2]*/) {
-        let margin: f32 = WIDTH - 40.0;
-        let turn_factor: f32 = 8.0;
-        if self.x < margin {
+    fn keep_within_bounds(&mut self, cursor: &[f32; 2]) {
+        let x_margin: f32 = WIDTH - 40.0;
+        let y_margin: f32 = HEIGHT - 40.0;
+        let turn_factor: f32 = 16.0;
+        if self.x < x_margin {
             self.dx += turn_factor;
         }
-        if self.x > WIDTH - margin {
+        if self.x > WIDTH - x_margin {
             self.dx -= turn_factor
         }
-        if self.y < margin {
+        if self.y < y_margin {
             self.dy += turn_factor;
         }
-        if self.y > HEIGHT - margin {
+        if self.y > HEIGHT - y_margin {
             self.dy -= turn_factor;
         }
-        /*Dorment Cursor Code from piston*/
-        // if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
-        //     self.dx += (self.x - cursor[0]) * 0.7;
-        //     self.dy += (self.y - cursor[1]) * 0.7;
-        // }
+        if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
+            self.dx += (self.x - cursor[0]) * 1.0;
+            self.dy += (self.y - cursor[1]) * 1.0;
+        }
     }
     fn distance(&self, boid: &Boid) -> f32 {
         ((self.x - boid.x).powi(2) + (self.y - boid.y).powi(2)).sqrt()
@@ -151,14 +151,14 @@ impl ggez::event::EventHandler for State {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.dt = timer::delta(ctx);
         let tick = (self.dt.subsec_millis() as f32) / 1000.0;
-
+        let mouse = input::mouse::position(ctx);
         for i in 0..(self.boids).len() {
             let mut b = self.boids[i];
             b.fly_towards_center(&self.boids);
             b.avoid_others(&self.boids);
             b.match_velocity(&self.boids);
             b.limit_speed();
-            b.keep_within_bounds();
+            b.keep_within_bounds(&[mouse.x, mouse.y]);
 
             b.x += b.dx * tick;
             b.y += b.dy * tick;
@@ -170,19 +170,33 @@ impl ggez::event::EventHandler for State {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.15, 0.2, 0.22, 1.0].into());
-
         let mb = &mut graphics::MeshBuilder::new();
         for boid in &self.boids {
-            let _angle = boid.dy.atan2(boid.dx) + PI / 2.0;
-            mb.circle(
-                graphics::DrawMode::fill(),
-                nalgebra::Point2::new(boid.x, boid.y),
-                BOID_SIZE / 2.0,
-                1.0,
+            let angle = boid.dy.atan2(boid.dx);
+            mb.line(
+                &[
+                    na::Point2::new(
+                        boid.x - BOID_SIZE * angle.cos(),
+                        boid.y - BOID_SIZE * angle.sin(),
+                    ),
+                    na::Point2::new(
+                        boid.x + BOID_SIZE * angle.cos(),
+                        boid.y + BOID_SIZE * angle.sin(),
+                    ),
+                ],
+                3.0,
                 boid.color.into(),
-            );
+            )?;
         }
         /*Highlight cursor..*/
+        mb.circle(
+            graphics::DrawMode::fill(),
+            input::mouse::position(ctx),
+            10.0,
+            0.5,
+            [1.0, 1.0, 1.0, 0.5].into(),
+        );
+
         let m = mb.build(ctx)?;
         graphics::draw(ctx, &m, graphics::DrawParam::new())?;
         graphics::present(ctx)
@@ -190,7 +204,7 @@ impl ggez::event::EventHandler for State {
 }
 
 fn main() {
-    let (mut ctx, mut events_loop) = ContextBuilder::new("GOL", "eisendaniel")
+    let (mut ctx, mut events_loop) = ContextBuilder::new("GOL", "Daniel Eisen")
         .window_mode(conf::WindowMode::default().dimensions(WIDTH, HEIGHT))
         .build()
         .expect("Failed to create context");
