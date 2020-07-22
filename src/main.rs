@@ -11,7 +11,7 @@ const VISUAL_RANGE: f32 = 64.0; // Pixels
 const MIN_DISTANCE: f32 = 12.0; // Pixels
 
 //drawing stuff
-const NUM_BOIDS: usize = 512; // n
+const NUM_BOIDS: usize = 1000; // n
 const BOID_SIZE: f32 = 12.0; // Pixels
 
 #[derive(Debug, Clone, Copy)]
@@ -104,20 +104,32 @@ impl Boid {
     }
 
     fn keep_within_bounds(&mut self, cursor: &[f32; 2]) {
-        let x_margin: f32 = WIDTH - 40.0;
-        let y_margin: f32 = HEIGHT - 40.0;
+        let edge_buffer: f32 = 40.0;
         let turn_factor: f32 = 16.0;
-        if self.x < x_margin {
+        let mut x_bounded = true;
+        let mut y_bounded = true;
+
+        if self.x < WIDTH - edge_buffer {
             self.dx += turn_factor;
+            x_bounded = !x_bounded;
         }
-        if self.x > WIDTH - x_margin {
-            self.dx -= turn_factor
+        if self.x > edge_buffer {
+            self.dx -= turn_factor;
+            x_bounded = !x_bounded;
         }
-        if self.y < y_margin {
+        if self.y < HEIGHT - edge_buffer {
             self.dy += turn_factor;
+            y_bounded = !y_bounded
         }
-        if self.y > HEIGHT - y_margin {
+        if self.y > edge_buffer {
             self.dy -= turn_factor;
+            y_bounded = !y_bounded
+        }
+        if !x_bounded {
+            self.dx *= 0.8;
+        }
+        if !y_bounded {
+            self.dy *= 0.8;
         }
         if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
             self.dx += (self.x - cursor[0]) * 1.0;
