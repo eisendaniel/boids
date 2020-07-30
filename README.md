@@ -2,4 +2,4 @@
 
 ## A pure rust implementation of the boids flocking algorithm
 
-![](https://media1.giphy.com/media/iGvU1YIlKaXw0UgyFv/giphy.gif)
+![boids](https://media1.giphy.com/media/iGvU1YIlKaXw0UgyFv/giphy.gif)
