@@ -2,16 +2,16 @@ use ggez::{nalgebra as na, *};
 use std::iter;
 
 //window stuff
-const HEIGHT: f32 = 800.0;
+const HEIGHT: f32 = 720.0;
 const WIDTH: f32 = HEIGHT * (16.0 / 9.0);
 
 //algorithm stuff
 const SPEED_LIMIT: f32 = 400.0; // Pixels per second
 const VISUAL_RANGE: f32 = 64.0; // Pixels
-const MIN_DISTANCE: f32 = 12.0; // Pixels
+const MIN_DISTANCE: f32 = 16.0; // Pixels
 
 //drawing stuff
-const NUM_BOIDS: usize = 1000; // n
+const NUM_BOIDS: usize = 1500; // n
 const BOID_SIZE: f32 = 12.0; // Pixels
 
 #[derive(Debug, Clone, Copy)]
@@ -28,13 +28,15 @@ impl Boid {
         Boid {
             x: (rand::random::<f32>() * WIDTH / 2.0 + WIDTH / 4.0),
             y: (rand::random::<f32>() * HEIGHT / 2.0 + HEIGHT / 4.0),
-            dx: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
-            dy: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
+            // dx: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
+            dx: 0.0,
+            // dy: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
+            dy: 0.0,
             color: [
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0, // Red
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
-                0.75,
+                0.5,
             ],
         }
     }
@@ -103,7 +105,7 @@ impl Boid {
         }
     }
 
-    fn keep_within_bounds(&mut self, cursor: &[f32; 2]) {
+    fn keep_within_bounds(&mut self, cursor: mint::Point2<f32>) {
         let edge_buffer: f32 = 40.0;
         let turn_factor: f32 = 16.0;
         let mut x_bounded = true;
@@ -131,9 +133,9 @@ impl Boid {
         if !y_bounded {
             self.dy *= 0.8;
         }
-        if ((self.x - cursor[0]).powi(2) + (self.y - cursor[1]).powi(2)).sqrt() < 20.0 {
-            self.dx += (self.x - cursor[0]) * 1.0;
-            self.dy += (self.y - cursor[1]) * 1.0;
+        if ((self.x - cursor.x).powi(2) + (self.y - cursor.y).powi(2)).sqrt() < 20.0 {
+            self.dx += (self.x - cursor.x) * 1.0;
+            self.dy += (self.y - cursor.y) * 1.0;
         }
     }
     fn distance(&self, boid: &Boid) -> f32 {
@@ -163,15 +165,15 @@ impl ggez::event::EventHandler for State {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.dt = timer::delta(ctx);
         let tick = (self.dt.subsec_millis() as f32) / 1000.0;
-        let mouse = input::mouse::position(ctx);
         for i in 0..(self.boids).len() {
             let mut b = self.boids[i];
             b.fly_towards_center(&self.boids);
             b.avoid_others(&self.boids);
             b.match_velocity(&self.boids);
+            b.keep_within_bounds(input::mouse::position(ctx));
             b.limit_speed();
-            b.keep_within_bounds(&[mouse.x, mouse.y]);
 
+            //Convert new velocity to postion change
             b.x += b.dx * tick;
             b.y += b.dy * tick;
 
@@ -187,13 +189,15 @@ impl ggez::event::EventHandler for State {
             let angle = boid.dy.atan2(boid.dx);
             mb.line(
                 &[
+                    //tail
                     na::Point2::new(
-                        boid.x - BOID_SIZE * angle.cos(),
-                        boid.y - BOID_SIZE * angle.sin(),
+                        boid.x - BOID_SIZE / 2.0 * angle.cos(),
+                        boid.y - BOID_SIZE / 2.0 * angle.sin(),
                     ),
+                    //head
                     na::Point2::new(
-                        boid.x + BOID_SIZE * angle.cos(),
-                        boid.y + BOID_SIZE * angle.sin(),
+                        boid.x + BOID_SIZE / 2.0 * angle.cos(),
+                        boid.y + BOID_SIZE / 2.0 * angle.sin(),
                     ),
                 ],
                 3.0,
@@ -205,7 +209,7 @@ impl ggez::event::EventHandler for State {
             graphics::DrawMode::fill(),
             input::mouse::position(ctx),
             10.0,
-            0.5,
+            0.1,
             [1.0, 1.0, 1.0, 0.5].into(),
         );
 
@@ -218,6 +222,7 @@ impl ggez::event::EventHandler for State {
 fn main() {
     let (mut ctx, mut events_loop) = ContextBuilder::new("GOL", "Daniel Eisen")
         .window_mode(conf::WindowMode::default().dimensions(WIDTH, HEIGHT))
+        .window_setup(conf::WindowSetup::default().samples(conf::NumSamples::Eight))
         .build()
         .expect("Failed to create context");
 
