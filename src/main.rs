@@ -184,23 +184,22 @@ impl ggez::event::EventHandler for State {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.15, 0.2, 0.22, 1.0].into());
+
+        let head = na::Point2::new(0.0, -BOID_SIZE / 2.0);
+        let tail_r = na::Point2::new(BOID_SIZE / 3.0, BOID_SIZE / 2.0);
+        let tail_l = na::Point2::new(-BOID_SIZE / 3.0, BOID_SIZE / 2.0);
+        
         let mb = &mut graphics::MeshBuilder::new();
         for boid in &self.boids {
-            let angle = boid.dy.atan2(boid.dx);
-            mb.line(
+            let rot = na::Rotation2::new(boid.dx.atan2(-boid.dy));
+            let pos = na::Vector2::new(boid.x, boid.y);
+            mb.polygon(
+                graphics::DrawMode::fill(),
                 &[
-                    //tail
-                    na::Point2::new(
-                        boid.x - BOID_SIZE / 2.0 * angle.cos(),
-                        boid.y - BOID_SIZE / 2.0 * angle.sin(),
-                    ),
-                    //head
-                    na::Point2::new(
-                        boid.x + BOID_SIZE / 2.0 * angle.cos(),
-                        boid.y + BOID_SIZE / 2.0 * angle.sin(),
-                    ),
+                    (rot * head) + pos,
+                    (rot * tail_r) + pos,
+                    (rot * tail_l) + pos,
                 ],
-                3.0,
                 boid.color.into(),
             )?;
         }
