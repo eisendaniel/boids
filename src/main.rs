@@ -12,7 +12,7 @@ const MIN_DISTANCE: f32 = 16.0; // Pixels
 
 //drawing stuff
 const NUM_BOIDS: usize = 1500; // n
-const BOID_SIZE: f32 = 12.0; // Pixels
+const BOID_SIZE: f32 = 16.0; // Pixels
 
 #[derive(Debug, Clone, Copy)]
 struct Boid {
@@ -28,10 +28,8 @@ impl Boid {
         Boid {
             x: (rand::random::<f32>() * WIDTH / 2.0 + WIDTH / 4.0),
             y: (rand::random::<f32>() * HEIGHT / 2.0 + HEIGHT / 4.0),
-            // dx: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
-            dx: 0.0,
-            // dy: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
-            dy: 0.0,
+            dx: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
+            dy: (rand::random::<f32>() - 0.5) * SPEED_LIMIT,
             color: [
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0, // Red
                 (rand::random::<f32>() * 128.0 + 128.0) / 255.0,
@@ -185,10 +183,11 @@ impl ggez::event::EventHandler for State {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.15, 0.2, 0.22, 1.0].into());
 
-        let head = na::Point2::new(0.0, -BOID_SIZE / 2.0);
-        let tail_r = na::Point2::new(BOID_SIZE / 3.0, BOID_SIZE / 2.0);
-        let tail_l = na::Point2::new(-BOID_SIZE / 3.0, BOID_SIZE / 2.0);
-        
+        let p0 = na::Point2::new(0.0, -BOID_SIZE / 2.0);
+        let p1 = na::Point2::new(BOID_SIZE / 4.0, BOID_SIZE / 2.0);
+        let p2 = na::Point2::new(0.0, BOID_SIZE / 3.0);
+        let p3 = na::Point2::new(-BOID_SIZE / 4.0, BOID_SIZE / 2.0);
+
         let mb = &mut graphics::MeshBuilder::new();
         for boid in &self.boids {
             let rot = na::Rotation2::new(boid.dx.atan2(-boid.dy));
@@ -196,9 +195,10 @@ impl ggez::event::EventHandler for State {
             mb.polygon(
                 graphics::DrawMode::fill(),
                 &[
-                    (rot * head) + pos,
-                    (rot * tail_r) + pos,
-                    (rot * tail_l) + pos,
+                    (rot * p0) + pos,
+                    (rot * p1) + pos,
+                    (rot * p2) + pos,
+                    (rot * p3) + pos,
                 ],
                 boid.color.into(),
             )?;
