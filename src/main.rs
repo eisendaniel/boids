@@ -1,4 +1,6 @@
-use ggez::{nalgebra as na, *};
+use ggez::{
+    conf, event, graphics, input, mint, nalgebra as na, timer, Context, ContextBuilder, GameResult,
+};
 use std::iter;
 
 //window stuff
