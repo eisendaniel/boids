@@ -79,8 +79,8 @@ impl Boid {
             }
         }
         if num_neighbors > 0.0 {
-            avg_dx = avg_dx / num_neighbors;
-            avg_dy = avg_dy / num_neighbors;
+            avg_dx /= num_neighbors;
+            avg_dy /= num_neighbors;
 
             self.dx += (avg_dx - self.dx) * matching_factor;
             self.dy += (avg_dy - self.dy) * matching_factor;
@@ -95,7 +95,12 @@ impl Boid {
         }
     }
 
-    pub fn keep_within_bounds(&mut self, cursor: mint::Point2<f32>, win_width: f32, win_height: f32) {
+    pub fn keep_within_bounds(
+        &mut self,
+        cursor: mint::Point2<f32>,
+        win_width: f32,
+        win_height: f32,
+    ) {
         let edge_buffer: f32 = 40.0;
         let turn_factor: f32 = 16.0;
         let mut x_bounded = true;

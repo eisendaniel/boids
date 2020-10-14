@@ -1,7 +1,7 @@
 mod boid;
 
 use ggez::{
-    conf, event, graphics, input, mint, nalgebra as na, timer, Context, ContextBuilder, GameResult,
+    conf, event, graphics, input, nalgebra as na, timer, Context, ContextBuilder, GameResult,
 };
 use std::iter;
 
@@ -14,7 +14,9 @@ const NUM_BOIDS: usize = 64; // n
 const BOID_SIZE: f32 = 16.0; // Pixels
 
 fn get_boids() -> Vec<boid::Boid> {
-    iter::repeat_with(|| boid::Boid::new(WIDTH, HEIGHT)).take(NUM_BOIDS).collect()
+    iter::repeat_with(|| boid::Boid::new(WIDTH, HEIGHT))
+        .take(NUM_BOIDS)
+        .collect()
 }
 
 struct State {
