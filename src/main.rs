@@ -103,6 +103,7 @@ impl ggez::event::EventHandler for State {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, [0.15, 0.2, 0.22, 1.0].into());
 
+        // MENU: display controls
         match self.state {
             PlayState::Setup => {
                 let menu_text = graphics::Text::new(graphics::TextFragment {
@@ -121,14 +122,6 @@ impl ggez::event::EventHandler for State {
             }
 
             _ => {
-                // let fps = timer::fps(ctx);
-                // let fps_display = Text::new(format!("FPS: {}", fps));
-                // graphics::draw(
-                //     ctx,
-                //     &fps_display,
-                //     (na::Point2::new(0.0, 0.0), graphics::WHITE),
-                // )?;
-
                 let mb = &mut graphics::MeshBuilder::new();
                 for boid in &self.boids {
                     let rot = na::Rotation2::new(boid.dx.atan2(-boid.dy));
