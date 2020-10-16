@@ -30,7 +30,7 @@ impl Boid {
             ],
         }
     }
-    pub fn avoid_others(&mut self, boids: &Vec<Boid>) {
+    pub fn avoid_others(&mut self, boids: &[Boid]) {
         let avoid_factor = 0.5;
         let mut move_x = 0.0;
         let mut move_y = 0.0;
@@ -45,7 +45,7 @@ impl Boid {
         self.dy += move_y * avoid_factor;
     }
 
-    pub fn fly_towards_center(&mut self, boids: &Vec<Boid>) {
+    pub fn fly_towards_center(&mut self, boids: &[Boid]) {
         let centering_factor = 0.05; // adjust velocity by this %
         let mut center_x = 0.0;
         let mut center_y = 0.0;
@@ -58,15 +58,15 @@ impl Boid {
             }
         }
         if num_neighbors > 0.0 {
-            center_x = center_x / num_neighbors;
-            center_y = center_y / num_neighbors;
+            center_x /= num_neighbors;
+            center_y /= num_neighbors;
 
             self.dx += (center_x - self.x) * centering_factor;
             self.dy += (center_y - self.y) * centering_factor;
         }
     }
 
-    pub fn match_velocity(&mut self, boids: &Vec<Boid>) {
+    pub fn match_velocity(&mut self, boids: &[Boid]) {
         let matching_factor = 0.1;
         let mut avg_dx = 0.0;
         let mut avg_dy = 0.0;
