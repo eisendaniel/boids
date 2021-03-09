@@ -30,6 +30,7 @@ impl Boid {
             ],
         }
     }
+
     pub fn avoid_others(&mut self, boids: &[Boid]) {
         let avoid_factor = 0.5;
         let mut move_x = 0.0;

@@ -10,8 +10,8 @@ const HEIGHT: f32 = 720.0;
 const WIDTH: f32 = HEIGHT * (16.0 / 9.0);
 
 //drawing stuff
-const NUM_BOIDS: usize = 1024; // n
-const BOID_SIZE: f32 = 16.0; // Pixels
+const NUM_BOIDS: usize = 8; // n
+const BOID_SIZE: f32 = 32.0; // Pixels
 
 fn get_boids() -> Vec<boid::Boid> {
     iter::repeat_with(|| boid::Boid::new(WIDTH, HEIGHT))
@@ -37,7 +37,7 @@ impl State {
         State {
             state: PlayState::Setup,
             dt: std::time::Duration::new(0, 0),
-            boids: Vec::new(),
+            boids: Vec::with_capacity(NUM_BOIDS),
             points: vec![
                 na::Point2::new(0.0, -BOID_SIZE / 2.0),
                 na::Point2::new(BOID_SIZE / 4.0, BOID_SIZE / 2.0),
@@ -145,6 +145,17 @@ impl ggez::event::EventHandler for State {
                     0.1,
                     [1.0, 1.0, 1.0, 0.5].into(),
                 );
+                let line = &[
+                    na::Point2::new(0.0, 0.0),
+                    na::Point2::new(50.0, 5.0),
+                    na::Point2::new(42.0, 10.0),
+                    na::Point2::new(150.0, 100.0),
+                ];
+                mb.polyline(
+                    graphics::DrawMode::stroke(2.0),
+                    line,
+                    [1.0, 1.0, 1.0, 1.0].into(),
+                )?;
                 let m = mb.build(ctx)?;
                 graphics::draw(ctx, &m, graphics::DrawParam::new())?;
             }
@@ -155,7 +166,7 @@ impl ggez::event::EventHandler for State {
 }
 
 fn main() {
-    let (mut ctx, mut events_loop) = ContextBuilder::new("GOL", "Daniel Eisen")
+    let (mut ctx, mut events_loop) = ContextBuilder::new("Boids", "Daniel Eisen")
         .window_mode(conf::WindowMode::default().dimensions(WIDTH, HEIGHT))
         .window_setup(conf::WindowSetup::default().samples(conf::NumSamples::Eight))
         .build()
@@ -164,7 +175,7 @@ fn main() {
     let mut state = State::new(&mut ctx);
 
     match event::run(&mut ctx, &mut events_loop, &mut state) {
-        Ok(_) => println!("Exited Cleanly "),
+        Ok(_) => println!("Exited Cleanly"),
         Err(e) => println!("Error: {}", e),
     }
 }
