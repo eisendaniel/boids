@@ -1,20 +1,26 @@
 mod boid;
 
 use ggez::{
-    conf, event, graphics, input, nalgebra as na, timer, Context, ContextBuilder, GameResult,
+    conf,
+    event,
+    graphics,
+    input,
+    timer,
+    Context,
+    ContextBuilder,
+    GameResult,
 };
-use std::iter;
 
 //window stuff
 const HEIGHT: f32 = 720.0;
 const WIDTH: f32 = HEIGHT * (16.0 / 9.0);
 
 //drawing stuff
-const NUM_BOIDS: usize = 8; // n
+const NUM_BOIDS: usize = 80; // n
 const BOID_SIZE: f32 = 32.0; // Pixels
 
 fn get_boids() -> Vec<boid::Boid> {
-    iter::repeat_with(|| boid::Boid::new(WIDTH, HEIGHT))
+    std::iter::repeat_with(|| boid::Boid::new(WIDTH, HEIGHT))
         .take(NUM_BOIDS)
         .collect()
 }
@@ -29,7 +35,7 @@ struct State {
     state: PlayState,
     dt: std::time::Duration,
     boids: Vec<boid::Boid>,
-    points: Vec<na::Point2<f32>>,
+    points: Vec<glam::Vec2>,
 }
 
 impl State {
@@ -39,44 +45,44 @@ impl State {
             dt: std::time::Duration::new(0, 0),
             boids: Vec::with_capacity(NUM_BOIDS),
             points: vec![
-                na::Point2::new(0.0, -BOID_SIZE / 2.0),
-                na::Point2::new(BOID_SIZE / 4.0, BOID_SIZE / 2.0),
-                na::Point2::new(0.0, BOID_SIZE / 3.0),
-                na::Point2::new(-BOID_SIZE / 4.0, BOID_SIZE / 2.0),
+                glam::vec2(0.0, -BOID_SIZE / 2.0),
+                glam::vec2(BOID_SIZE / 4.0, BOID_SIZE / 2.0),
+                glam::vec2(0.0, BOID_SIZE / 3.0),
+                glam::vec2(-BOID_SIZE / 4.0, BOID_SIZE / 2.0),
             ],
         }
     }
 }
 
-impl ggez::event::EventHandler for State {
+impl event::EventHandler for State {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.dt = timer::delta(ctx);
         let tick = (self.dt.subsec_millis() as f32) / 1000.0;
-        let pressed_keys = ggez::input::keyboard::pressed_keys(ctx);
+        let pressed_keys = input::keyboard::pressed_keys(ctx);
 
         match self.state {
             PlayState::Setup => {
                 self.boids.drain(..);
-                if pressed_keys.contains(&ggez::event::KeyCode::Space) {
+                if pressed_keys.contains(&event::KeyCode::Space) {
                     self.boids = get_boids();
                     self.state = PlayState::Play;
                 }
             }
 
             PlayState::Pause => {
-                let pressed_keys = ggez::input::keyboard::pressed_keys(ctx);
+                let pressed_keys = input::keyboard::pressed_keys(ctx);
 
-                if pressed_keys.contains(&ggez::event::KeyCode::Space) {
+                if pressed_keys.contains(&event::KeyCode::Space) {
                     self.state = PlayState::Play;
-                } else if pressed_keys.contains(&ggez::event::KeyCode::R) {
+                } else if pressed_keys.contains(&event::KeyCode::R) {
                     self.state = PlayState::Setup;
                 }
             }
 
             PlayState::Play => {
-                if pressed_keys.contains(&ggez::event::KeyCode::P) {
+                if pressed_keys.contains(&event::KeyCode::P) {
                     self.state = PlayState::Pause;
-                } else if pressed_keys.contains(&ggez::event::KeyCode::R) {
+                } else if pressed_keys.contains(&event::KeyCode::R) {
                     self.state = PlayState::Setup;
                 }
 
@@ -108,24 +114,25 @@ impl ggez::event::EventHandler for State {
             PlayState::Setup => {
                 let menu_text = graphics::Text::new(graphics::TextFragment {
                     text: "play : <space>\npause : <p>\nreset : <r>".to_string(),
-                    color: Some(graphics::WHITE),
+                    color: Some(graphics::Color::WHITE),
                     font: Some(graphics::Font::default()),
-                    scale: Some(graphics::Scale::uniform(100.0)),
+                    scale: Some(graphics::PxScale::from(100.0)),
                 });
 
-                let text_pos = na::Point2::new(
+                let text_pos = glam::vec2(
                     (WIDTH - menu_text.width(ctx) as f32) / 2.0,
                     (HEIGHT - menu_text.height(ctx) as f32) / 2.0,
                 );
 
-                graphics::draw(ctx, &menu_text, (text_pos,))?;
+                graphics::draw(ctx, &menu_text,
+                               graphics::DrawParam::default().dest(text_pos))?;
             }
 
             _ => {
                 let mb = &mut graphics::MeshBuilder::new();
                 for boid in &self.boids {
-                    let rot = na::Rotation2::new(boid.dx.atan2(-boid.dy));
-                    let pos = na::Vector2::new(boid.x, boid.y);
+                    let rot = glam::Mat2::from_angle(boid.dx.atan2(-boid.dy));
+                    let pos = glam::vec2(boid.x, boid.y);
                     mb.polygon(
                         graphics::DrawMode::fill(),
                         &[
@@ -144,12 +151,12 @@ impl ggez::event::EventHandler for State {
                     10.0,
                     0.1,
                     [1.0, 1.0, 1.0, 0.5].into(),
-                );
+                )?;
                 let line = &[
-                    na::Point2::new(0.0, 0.0),
-                    na::Point2::new(50.0, 5.0),
-                    na::Point2::new(42.0, 10.0),
-                    na::Point2::new(150.0, 100.0),
+                    glam::vec2(0.0, 0.0),
+                    glam::vec2(50.0, 5.0),
+                    glam::vec2(42.0, 10.0),
+                    glam::vec2(150.0, 100.0),
                 ];
                 mb.polyline(
                     graphics::DrawMode::stroke(2.0),
@@ -166,16 +173,13 @@ impl ggez::event::EventHandler for State {
 }
 
 fn main() {
-    let (mut ctx, mut events_loop) = ContextBuilder::new("Boids", "Daniel Eisen")
+    let (mut ctx, events_loop) = ContextBuilder::new("Boids", "Daniel Eisen")
         .window_mode(conf::WindowMode::default().dimensions(WIDTH, HEIGHT))
         .window_setup(conf::WindowSetup::default().samples(conf::NumSamples::Eight))
         .build()
         .expect("Failed to create context");
 
-    let mut state = State::new(&mut ctx);
+    let state = State::new(&mut ctx);
 
-    match event::run(&mut ctx, &mut events_loop, &mut state) {
-        Ok(_) => println!("Exited Cleanly"),
-        Err(e) => println!("Error: {}", e),
-    }
+    event::run(ctx, events_loop, state);
 }
