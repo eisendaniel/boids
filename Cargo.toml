@@ -10,3 +10,11 @@ edition = "2018"
 ggez = "0.7.0"
 glam = "0.20.2"
 rand = "0.8.5"
+rayon = "1.8.0"  # Added for parallel processing
+
+[profile.release]
+debug = false
+lto = true        # Link Time Optimization
+codegen-units = 1 # Optimize across entire codebase
+opt-level = 3     # Maximum optimizations
+panic = "abort"   # Remove panic unwinding code
